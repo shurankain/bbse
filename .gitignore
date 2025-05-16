@@ -1,0 +1,25 @@
+# === Rust ===
+/target/
+**/*.rs.bk
+**/*.swp
+**/*.swo
+
+# === Cargo ===
+Cargo.lock
+
+# === IDEs and tools ===
+.idea/
+.vscode/
+*.iml
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Logs ===
+*.log
+
+# === Backups ===
+*.bak
+*.tmp
+*.old
