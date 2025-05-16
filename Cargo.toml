@@ -1,9 +1,14 @@
 [package]
 name = "bbse"
 version = "0.1.0"
-authors = ["Oleksandr Husiev <ohusiev@icloud.com>"]
 edition = "2021"
+authors = ["Oleksandr Husiev <ohusiev@icloud.com>"]
+description = "Backward Binary Search Encoding — minimal and deterministic scheme for sorted domains"
 license = "MIT"
+repository = "https://github.com/shurankain/bbse"
+readme = "README.md"
+keywords = ["encoding", "binary", "search", "bit", "range"]
+categories = ["compression", "data-structures", "algorithms"]
 
 [dependencies]
 bitvec = "1"
