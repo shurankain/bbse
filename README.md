@@ -1,6 +1,8 @@
 
 # bbse — Backward Binary Search Encoding
 
+[![Crates.io](https://img.shields.io/crates/v/bbse.svg)](https://crates.io/crates/bbse)
+
 `bbse` is a minimal and deterministic encoding scheme for values in a sorted integer range.  
 It encodes a target value as a binary decision path, following the steps of binary search.  
 
