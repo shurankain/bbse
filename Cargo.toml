@@ -1,0 +1,6 @@
+[package]
+name = "bbse"
+version = "0.1.0"
+authors = ["Oleksandr Husiev <ohusiev@icloud.com>"]
+edition = "2021"
+license = "MIT"
