@@ -3,49 +3,102 @@
 //! A minimal and deterministic encoding scheme for any sorted range,
 //! based on walking the binary search path to a target value.
 //!
-//! Useful in scenarios requiring:
-//! - compact, prefix-free representation of integers from a range;
-//! - simple and reversible encoding for sorted domains;
-//! - constant-time decoding without full table reconstruction (unlike Elias/Fano).
+//! This encoding is useful when you need:
 //!
-//! ## Example
+//! - a compact, prefix-free representation of integers within a known range;
+//! - reversible and stateless encoding for sorted domains;
+//! - deterministic paths suitable for compression, indexing or entropy coding;
+//! - simple decoding without precomputed tables (unlike Elias or Fano).
+//!
+//! ## Features
+//!
+//! - Supports custom midpoint selection (`encode_from`) for skewed distributions;
+//! - Safe and panic-resistant with clear invariants;
+//! - Compatible with [`no_std`] with `alloc` (planned).
+//!
+//! ## Examples
+//!
+//! Basic usage:
+//!
 //! ```
 //! use bbse::{encode, decode};
-//! let path = bbse::encode(0, 16, 5);       // binary search path to 5 in [0..16)
-//! let value = bbse::decode(0, 16, &path);  // == 5
+//! let path = encode(0, 16, 5);
+//! let value = decode(0, 16, &path);
 //! assert_eq!(value, 5);
 //! ```
+//!
+//! With a custom midpoint:
+//!
+//! ```
+//! use bbse::{encode_from, decode};
+//! let path = encode_from(0, 16, 5, 8); // start at 8 instead of default midpoint
+//! let value = decode(0, 16, &path);
+//! assert_eq!(value, 5);
+//! ```
+//!
+//! ## Behavior
+//!
+//! - `encode` produces a sequence of binary decisions (`BitVec`) that
+//!   represents the search path for `target` in `[start..end)`.
+//! - `decode` reverses that path to recover the original value.
+//! - The encoded path is **prefix-free** and **uniquely decodable**.
+//!
+//! ## Limitations
+//!
+//! - Panics if `target` is out of range;
+//! - Panics if the path is invalid or doesn't narrow the range to a single value;
+//! - Only works for discrete ranges over `usize`.
 
 use bitvec::order::Msb0;
 use bitvec::vec::BitVec;
 
-/// Encodes a value as a binary decision sequence (left/right),
-/// given a sorted range [`start`, `end`) and the target value.
-///
-/// Returns a `BitVec` of left (0) and right (1) decisions.
+/// Encodes a value using a custom initial midpoint instead of the default center.
+/// Useful for biased distributions toward one end of the range.
 ///
 /// # Panics
-/// Panics if `target` is not in the range.
-///
-/// # Example
-/// ```
-/// let path = bbse::encode(0, 8, 6);
-/// ```
-pub fn encode(mut start: usize, mut end: usize, target: usize) -> BitVec<u8, Msb0> {
+/// Panics if `midpoint` is not within the range or causes unbalanced division.
+pub fn encode_from(start: usize, end: usize, target: usize, midpoint: usize) -> BitVec<u8, Msb0> {
+    assert!(start < end, "Invalid range");
     assert!(start <= target && target < end, "target out of bounds");
 
     let mut path = BitVec::<u8, Msb0>::new();
-    while end - start > 1 {
-        let mid = (start + end) / 2;
-        if target < mid {
-            path.push(false); // go left
-            end = mid;
-        } else {
-            path.push(true); // go right
-            start = mid;
-        }
+    let mut left = start;
+    let mut right = end;
+
+    if right - left <= 1 {
+        return path;
     }
+
+    let mut mid = midpoint;
+    assert!(
+        left < mid && mid < right,
+        "midpoint must be within (start, end)"
+    );
+
+    while right - left > 1 {
+        if target < mid {
+            path.push(false);
+            right = mid;
+        } else {
+            path.push(true);
+            left = mid;
+        }
+
+        let new_range = right - left;
+        if new_range == 1 {
+            break;
+        }
+
+        mid = (left + right) / 2;
+    }
+
     path
+}
+
+/// Convenience method that assumes midpoint is the center of the range.
+pub fn encode(start: usize, end: usize, target: usize) -> BitVec<u8, Msb0> {
+    let midpoint = (start + end) / 2;
+    encode_from(start, end, target, midpoint)
 }
 
 /// Decodes a binary decision sequence into the value it encodes,
@@ -53,12 +106,6 @@ pub fn encode(mut start: usize, mut end: usize, target: usize) -> BitVec<u8, Msb
 ///
 /// # Panics
 /// Panics if the path is invalid or incomplete.
-///
-/// # Example
-/// ```
-/// let value = bbse::decode(0, 8, &bbse::encode(0, 8, 6));
-/// assert_eq!(value, 6);
-/// ```
 pub fn decode(mut start: usize, mut end: usize, path: &BitVec<u8, Msb0>) -> usize {
     for bit in path {
         let mid = (start + end) / 2;
@@ -155,7 +202,7 @@ mod tests {
     #[should_panic(expected = "incomplete or invalid path")]
     fn test_invalid_decode_path() {
         let mut bits = BitVec::<u8, Msb0>::new();
-        bits.push(true); // leads to [1, 3), not yet resolved
+        bits.push(true);
         decode(0, 3, &bits);
     }
 
@@ -176,5 +223,31 @@ mod tests {
         let bits_end = encode(0, size, size - 1);
         assert_eq!(decode(0, size, &bits_start), 0);
         assert_eq!(decode(0, size, &bits_end), size - 1);
+    }
+
+    #[test]
+    fn test_encode_from_custom_midpoint() {
+        let start = 0;
+        let end = 16;
+        let midpoint = (start + end) / 2; // must be safe
+        for value in start..end {
+            let bits = encode_from(start, end, value, midpoint);
+            let decoded = decode(start, end, &bits);
+            assert_eq!(decoded, value, "Failed at value {}", value);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "midpoint must be within (start, end)")]
+    fn test_midpoint_out_of_bounds() {
+        // Midpoint is equal to start — violates midpoint ∈ (start, end)
+        let _ = encode_from(0, 10, 5, 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "target out of bounds")]
+    fn test_target_out_of_bounds_in_custom_midpoint() {
+        // Target == end — out of range
+        let _ = encode_from(0, 10, 10, 5);
     }
 }

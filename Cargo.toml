@@ -1,6 +1,6 @@
 [package]
 name = "bbse"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Oleksandr Husiev <ohusiev@icloud.com>"]
 description = "Backward Binary Search Encoding — minimal and deterministic scheme for sorted domains"
