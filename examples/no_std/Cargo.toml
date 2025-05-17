@@ -1,0 +1,17 @@
+[package]
+name = "no_std_example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bbse = { path = "../..", default-features = false }
+bitvec = { version = "1.0", default-features = false, features = ["alloc"] }
+
+[build-dependencies]
+
+[profile.dev]
+debug = true
+opt-level = 0
+
+[profile.release]
+opt-level = 3
