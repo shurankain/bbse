@@ -1,4 +1,3 @@
-
 # bbse — Backward Binary Search Encoding
 
 [![Crates.io](https://img.shields.io/crates/v/bbse.svg)](https://crates.io/crates/bbse)
@@ -14,6 +13,7 @@ from any `[start, end)` interval.
 ## ✨ Features
 
 - Prefix-free binary encoding for any sorted range
+- Customizable midpoint for biased distributions
 - Simple, deterministic, and lossless
 - Suitable for compression, range indexing, embedded systems
 - No heap allocation (except for returned bitvector)
@@ -32,6 +32,23 @@ assert_eq!(value, 5);
 
 ---
 
+## 🎯 Custom midpoint
+
+For skewed distributions (e.g., values near the beginning or end),
+you can control the **first midpoint** to reduce average path length:
+
+```rust
+use bbse::{encode_from, decode};
+
+let bits = encode_from(0, 16, 3, 4);  // start=0, end=16, target=3, midpoint=4
+let value = decode(0, 16, &bits);
+assert_eq!(value, 3);
+```
+
+This gives you **greater control over compression performance**.
+
+---
+
 ## 🎨 Use case: color encoding
 
 The algorithm was originally inspired by the need to encode color deltas efficiently
@@ -46,10 +63,8 @@ This enabled compact per-channel encoding with **minimal logic**, without relyin
 
 ```toml
 [dependencies]
-bbse = "0.1.0"
+bbse = "0.2.0"
 ```
-
-(Add this to your `Cargo.toml` after publication)
 
 ---
 
@@ -59,7 +74,6 @@ MIT
 
 ---
 
-## 🔬 Future extensions
+## 🔮 Future directions
 
-* Used in image codec prototype to encode color deltas via BBSE for predictable bit-length.
-
+* Optional `no_std` support for embedded targets
