@@ -23,3 +23,7 @@ Thumbs.db
 *.bak
 *.tmp
 *.old
+
+# === Examples ===
+/examples/**/target/
+/examples/**/Cargo.lock
