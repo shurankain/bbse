@@ -10,5 +10,9 @@ readme = "README.md"
 keywords = ["encoding", "binary", "search", "bit", "range"]
 categories = ["compression", "data-structures", "algorithms"]
 
+[features]
+default = ["std"]
+std = []
+
 [dependencies]
-bitvec = "1"
+bitvec = { version = "1.0", default-features = false, features = ["alloc"] }
