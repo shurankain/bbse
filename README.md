@@ -65,7 +65,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bbse = "0.2.1"
+bbse = "0.2.2"
 ```
 
 ---
@@ -76,7 +76,7 @@ This crate supports `#![no_std]` environments using the `alloc` crate:
 
 ```toml
 [dependencies.bbse]
-version = "0.2.1"
+version = "0.2.2"
 default-features = false
 ```
 
