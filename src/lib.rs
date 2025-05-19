@@ -38,7 +38,7 @@
 //!
 //! ## Behavior
 //!
-//! - `encode` produces a sequence of binary decisions (`BitVec`) that
+//! - `encode` produces a sequence of binary decisions (`BitVec<u8, Msb0>`) that
 //!   represents the search path for `target` in `[start..end)`.
 //! - `decode` reverses that path to recover the original value.
 //! - The encoded path is **prefix-free** and **uniquely decodable**.
@@ -50,11 +50,9 @@
 //! - Only works for discrete ranges over `usize`.
 #![cfg_attr(not(feature = "std"), no_std)]
 extern crate alloc;
-extern crate core;
 
 use bitvec::order::Msb0;
 use bitvec::vec::BitVec;
-use core::panic;
 
 /// Encodes a value using a custom initial midpoint instead of the default center.
 /// Useful for biased distributions toward one end of the range.
@@ -63,10 +61,10 @@ use core::panic;
 /// Panics if `midpoint` is not within the range or causes unbalanced division.
 pub fn encode_from(start: usize, end: usize, target: usize, midpoint: usize) -> BitVec<u8, Msb0> {
     if start >= end {
-        panic!("Invalid range");
+        panic!("Invalid range: start ({}) >= end ({})", start, end);
     }
     if !(start <= target && target < end) {
-        panic!("target out of bounds");
+        panic!("target ({}) out of bounds [{}, {})", target, start, end);
     }
 
     let mut path = BitVec::<u8, Msb0>::new();
@@ -79,7 +77,10 @@ pub fn encode_from(start: usize, end: usize, target: usize, midpoint: usize) -> 
 
     let mut mid = midpoint;
     if !(left < mid && mid < right) {
-        panic!("midpoint must be within (start, end)");
+        panic!(
+            "midpoint ({}) must be within (start={}, end={})",
+            mid, left, right
+        );
     }
 
     while right - left > 1 {

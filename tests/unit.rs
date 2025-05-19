@@ -3,7 +3,7 @@ use bitvec::order::Msb0;
 use bitvec::vec::BitVec;
 
 #[test]
-#[should_panic(expected = "target out of bounds")]
+#[should_panic(expected = "target (25) out of bounds [10, 20)")]
 fn test_out_of_bounds() {
     let _ = encode(10, 20, 25);
 }
@@ -66,13 +66,13 @@ fn test_single_element_range() {
 }
 
 #[test]
-#[should_panic(expected = "target out of bounds")]
+#[should_panic(expected = "target (9) out of bounds [10, 20)")]
 fn test_target_out_of_bounds_below() {
     encode(10, 20, 9);
 }
 
 #[test]
-#[should_panic(expected = "target out of bounds")]
+#[should_panic(expected = "target (20) out of bounds [10, 20)")]
 fn test_target_out_of_bounds_above() {
     encode(10, 20, 20);
 }
@@ -117,13 +117,13 @@ fn test_encode_from_custom_midpoint() {
 }
 
 #[test]
-#[should_panic(expected = "midpoint must be within (start, end)")]
+#[should_panic(expected = "midpoint (0) must be within (start=0, end=10)")]
 fn test_midpoint_out_of_bounds() {
     let _ = encode_from(0, 10, 5, 0);
 }
 
 #[test]
-#[should_panic(expected = "target out of bounds")]
+#[should_panic(expected = "target (10) out of bounds [0, 10)")]
 fn test_target_out_of_bounds_in_custom_midpoint() {
     let _ = encode_from(0, 10, 10, 5);
 }
