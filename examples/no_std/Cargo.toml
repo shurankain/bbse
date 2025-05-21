@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bbse = { version = "2.0", path = "../..", default-features = false }
+bbse = { path = "../..", default-features = false }
 bitvec = { version = "1.0", default-features = false, features = ["alloc"] }
 
 [build-dependencies]
