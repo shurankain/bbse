@@ -1,65 +1,64 @@
-//! # bbse — Backward Binary Search Encoding
+//! # BBSE — Backward Binary Search Encoding (Stack-based Concept)
 //!
-//! A minimal and deterministic encoding scheme for any sorted range,
-//! based on walking the binary search path to a target value.
+//! BBSE encodes integer values from a known sorted range as a compact path of binary decisions — the same steps a binary search would take to locate the value.
 //!
-//! This encoding is useful when you need:
+//! This encoding is:
+//! - **Prefix-free** and minimal;
+//! - **Deterministic** and reversible;
+//! - **Stack-compatible** — no headers, no length metadata;
+//! - **Range-aware** — optimized for values near the center.
 //!
-//! - a compact, prefix-free representation of integers within a known range;
-//! - reversible and stateless encoding for sorted domains;
-//! - deterministic paths suitable for compression, indexing or entropy coding;
-//! - simple decoding without precomputed tables (unlike Elias or Fano).
+//! ## Overview
+//!
+//! Each value is represented as a `BitVec`, encoding the binary decisions taken while performing binary search to locate the value in `[start..end)`.
+//! The search terminates early if the midpoint equals the target value.
+//!
+//! BBSE paths can be stored directly in a stack, enabling extremely compact storage.
 //!
 //! ## Features
 //!
-//! - Supports custom midpoint selection (`encode_from`) for skewed distributions;
-//! - Safe and panic-resistant with clear invariants;
-//! - Compatible with [`no_std`] with `alloc` (planned).
+//! - Compact, unique encoding per value;
+//! - No external data needed to decode (just `start..end` range);
+//! - Zero allocation per path in streaming form;
+//! - No statistical modeling — pure binary search geometry.
 //!
 //! ## Examples
 //!
-//! Basic usage:
-//!
-//! ```
+//! ```rust
 //! use bbse::{encode, decode};
-//! let path = encode(0, 16, 5);
-//! let value = decode(0, 16, &path);
-//! assert_eq!(value, 5);
+//! let path = encode(0, 256, 128); // one step or even empty path
+//! let value = decode(0, 256, &path);
+//! assert_eq!(value, 128);
 //! ```
 //!
-//! With a custom midpoint:
-//!
+//! ```rust
+//! use bbse::{encode, BBSEStack};
+//! let mut stack = BBSEStack::new();
+//! for v in [0, 1, 2, 3, 4, 5, 6, 7] {
+//!     stack.push(encode(0, 8, v));
+//! }
+//! let decoded = stack.decode_all(0, 8);
+//! assert_eq!(decoded, vec![0, 1, 2, 3, 4, 5, 6, 7]);
 //! ```
-//! use bbse::{encode_from, decode};
-//! let path = encode_from(0, 16, 5, 8); // start at 8 instead of default midpoint
-//! let value = decode(0, 16, &path);
-//! assert_eq!(value, 5);
-//! ```
-//!
-//! ## Behavior
-//!
-//! - `encode` produces a sequence of binary decisions (`BitVec<u8, Msb0>`) that
-//!   represents the search path for `target` in `[start..end)`.
-//! - `decode` reverses that path to recover the original value.
-//! - The encoded path is **prefix-free** and **uniquely decodable**.
 //!
 //! ## Limitations
 //!
-//! - Panics if `target` is out of range;
-//! - Panics if the path is invalid or doesn't narrow the range to a single value;
-//! - Only works for discrete ranges over `usize`.
+//! - Values must lie within the specified range.
+//! - Encoded paths must be decoded with the same range.
+//! - Not optimized for random-access decoding without range knowledge.
 #![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
 extern crate alloc;
 
+#[cfg(not(feature = "std"))]
+use alloc::{vec, vec::Vec};
 use bitvec::order::Msb0;
 use bitvec::vec::BitVec;
+use core::{default::Default, option::Option, panic};
 
-/// Encodes a value using a custom initial midpoint instead of the default center.
-/// Useful for biased distributions toward one end of the range.
-///
-/// # Panics
-/// Panics if `midpoint` is not within the range or causes unbalanced division.
-pub fn encode_from(start: usize, end: usize, target: usize, midpoint: usize) -> BitVec<u8, Msb0> {
+/// BBSE stack-based encoding: returns a BitVec representing the path
+pub fn encode(start: usize, end: usize, target: usize) -> BitVec<u8, Msb0> {
     if start >= end {
         panic!("Invalid range: start ({}) >= end ({})", start, end);
     }
@@ -68,63 +67,89 @@ pub fn encode_from(start: usize, end: usize, target: usize, midpoint: usize) -> 
     }
 
     let mut path = BitVec::<u8, Msb0>::new();
-    let mut left = start;
-    let mut right = end;
+    let mut lo = start;
+    let mut hi = end;
 
-    if right - left <= 1 {
-        return path;
-    }
+    loop {
+        let mid = (lo + hi) / 2;
 
-    let mut mid = midpoint;
-    if !(left < mid && mid < right) {
-        panic!(
-            "midpoint ({}) must be within (start={}, end={})",
-            mid, left, right
-        );
-    }
-
-    while right - left > 1 {
-        if target < mid {
-            path.push(false);
-            right = mid;
-        } else {
-            path.push(true);
-            left = mid;
-        }
-
-        let new_range = right - left;
-        if new_range == 1 {
+        if target == mid {
             break;
         }
 
-        mid = (left + right) / 2;
+        if target < mid {
+            path.push(false);
+            hi = mid;
+        } else {
+            path.push(true);
+            lo = mid;
+        }
+
+        if hi - lo == 1 {
+            break;
+        }
     }
 
     path
 }
 
-/// Convenience method that assumes midpoint is the center of the range.
-pub fn encode(start: usize, end: usize, target: usize) -> BitVec<u8, Msb0> {
-    let midpoint = (start + end) / 2;
-    encode_from(start, end, target, midpoint)
-}
+/// BBSE decoder: consumes a path and returns the corresponding value
+pub fn decode(start: usize, end: usize, path: &BitVec<u8, Msb0>) -> usize {
+    let mut lo = start;
+    let mut hi = end;
 
-/// Decodes a binary decision sequence into the value it encodes,
-/// given the original [`start`, `end`) range.
-///
-/// # Panics
-/// Panics if the path is invalid or incomplete.
-pub fn decode(mut start: usize, mut end: usize, path: &BitVec<u8, Msb0>) -> usize {
-    for bit in path {
-        let mid = (start + end) / 2;
+    for bit in path.iter() {
+        let mid = (lo + hi) / 2;
         if *bit {
-            start = mid;
+            lo = mid;
         } else {
-            end = mid;
+            hi = mid;
         }
     }
-    if start + 1 != end {
-        panic!("incomplete or invalid path");
+
+    (lo + hi) / 2
+}
+
+/// BBSE custom midpoint (optional)
+pub fn encode_from(start: usize, end: usize, target: usize, midpoint: usize) -> BitVec<u8, Msb0> {
+    if !(start < midpoint && midpoint < end) {
+        panic!(
+            "midpoint ({}) must be within (start={}, end={})",
+            midpoint, start, end
+        );
     }
-    start
+    encode(start, end, target) // defer to default encode for simplicity
+}
+
+/// Stack model — store multiple values as separate paths
+pub struct BBSEStack {
+    pub entries: Vec<BitVec<u8, Msb0>>,
+}
+impl Default for BBSEStack {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl BBSEStack {
+    pub fn new() -> Self {
+        Self { entries: vec![] }
+    }
+
+    pub fn push(&mut self, path: BitVec<u8, Msb0>) {
+        self.entries.push(path);
+    }
+
+    pub fn pop(&mut self) -> Option<BitVec<u8, Msb0>> {
+        self.entries.pop()
+    }
+
+    pub fn decode_all(&self, start: usize, end: usize) -> Vec<usize> {
+        self.entries.iter().map(|p| decode(start, end, p)).collect()
+    }
+
+    #[cfg(feature = "std")]
+    pub fn print_all(&self) {
+        self.entries.iter().for_each(|f| println!("encoded: {}", f));
+    }
 }

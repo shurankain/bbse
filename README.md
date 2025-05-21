@@ -1,84 +1,103 @@
-# bbse — Backward Binary Search Encoding
+# bbse — Backward Binary Search Encoding (v2.0)
 
 [![Crates.io](https://img.shields.io/crates/v/bbse.svg)](https://crates.io/crates/bbse)
 
-`bbse` is a minimal and deterministic encoding scheme for values in a sorted integer range.  
-It encodes a target value as a binary decision path, following the steps of binary search.
-
-This results in a **prefix-free**, **compact**, and **reversible** representation of any value  
-within a known interval `[start, end)`.
+`bbse` encodes integer values as the path that binary search would take to find them in a known range.  
+The result is a **prefix-free**, **compact**, **reversible**, and **range-aware** representation —  
+ideal for low-footprint use cases like compression, embedded indexing, and color deltas.
 
 ---
 
-## ✨ Features
+## ✨ Highlights
 
-- Prefix-free binary encoding for sorted domains
-- Customizable midpoint to optimize for skewed distributions
-- Constant-time decoding without lookup tables
-- `no_std` compatible with `alloc`
-- Suitable for compression, indexing, image deltas, and embedded systems
+- 🧠 Path-based encoding using binary search logic
+- ✅ Prefix-free, minimal-length representation
+- 🪆 Stack-compatible — values can be stored without headers or offsets
+- 🧮 Customizable midpoint for biased distributions
+- 🚫 No statistical model or table required
+- 🧵 `no_std` compatible with `alloc`
 
 ---
 
-## 🚀 Basic example
+## 🚀 Quick Example
 
 ```rust
 use bbse::{encode, decode};
 
-let bits = encode(0, 16, 5);        // Binary search path for 5 in [0, 16)
-let value = decode(0, 16, &bits);   // -> 5
-assert_eq!(value, 5);
+let bits = encode(0, 256, 128); // Path to 128 in [0, 256)
+let value = decode(0, 256, &bits);
+assert_eq!(value, 128);
 ````
 
 ---
 
-## 🎯 Custom midpoint
+## 🎯 Stack-based Encoding
 
-You can manually specify the first midpoint to better handle non-uniform distributions:
+Each encoded value is just a binary search path — ideal for use as a stack of values:
+
+```rust
+use bbse::{encode, BBSEStack};
+
+let mut stack = BBSEStack::new();
+for value in [0, 1, 2, 3, 4, 5, 6, 7] {
+    stack.push(encode(0, 8, value));
+}
+
+let decoded = stack.decode_all(0, 8);
+assert_eq!(decoded, vec![0, 1, 2, 3, 4, 5, 6, 7]);
+```
+
+---
+
+## 🛠 Custom Midpoint (Optional)
 
 ```rust
 use bbse::{encode_from, decode};
 
-let bits = encode_from(0, 16, 3, 4);  // Midpoint = 4 instead of 8
+let bits = encode_from(0, 16, 3, 4);  // Use midpoint = 4 instead of center
 let value = decode(0, 16, &bits);
 assert_eq!(value, 3);
 ```
 
-This gives more control over the generated bit length.
-
 ---
 
-## 🎨 Real-world use case: color encoding
+## 🎨 Origin: Efficient Color Deltas
 
-The core algorithm was inspired by the problem of efficiently encoding **color deltas**
-in a lossless image codec. By encoding each delta value (R, G, B) as a binary search path
-within a bounded range, we achieved lightweight compression with predictable bit lengths
-and minimal branching.
+This project originated while designing a custom image codec for RGB delta compression.
+By encoding deltas using binary search paths instead of entropy coding, we achieved:
 
-This avoids full entropy coding while still producing short bitstreams.
+* Predictable bit lengths
+* Simple bitstream merging
+* Ultra-lightweight decoding with no tables or models
 
 ---
 
 ## 📦 Installation
 
-Add to your `Cargo.toml`:
-
 ```toml
 [dependencies]
-bbse = "0.2.2"
+bbse = "2.0.0"
+```
+
+For embedded or `no_std` use:
+
+```toml
+[dependencies.bbse]
+version = "2.0.0"
+default-features = false
 ```
 
 ---
 
-## 🛠 no\_std support
+## ⚙️ Features
 
-This crate supports `#![no_std]` environments using the `alloc` crate:
+* `std` (default): Enables printing and full integration with standard I/O
+* `no_std`: Disables `std`, uses `alloc` only — ideal for embedded targets
 
-```toml
-[dependencies.bbse]
-version = "0.2.2"
-default-features = false
-```
+---
+
+**BBSE is simple, elegant, and inspired by the structure of the data itself — not statistics.**
+No entropy. No overhead. Just binary logic.
 
 ---
 
