@@ -74,6 +74,8 @@ By encoding deltas using binary search paths instead of entropy coding, we achie
 
 ## 📦 Installation
 
+>MSRV (Minimum Supported Rust Version) This crate requires **Rust 1.78.0** or later.
+
 ```toml
 [dependencies]
 bbse = "2.0.0"
