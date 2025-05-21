@@ -10,3 +10,7 @@
 ## 2.0.1
 
 - Declared MSRV (Minimum Supported Rust Version) as Rust 1.78.0 in `Cargo.toml` and `README.md`.
+
+## 2.0.2
+
+- Fixed `README.md` to containg correct version in crates.io.

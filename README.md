@@ -78,14 +78,14 @@ By encoding deltas using binary search paths instead of entropy coding, we achie
 
 ```toml
 [dependencies]
-bbse = "2.0.0"
+bbse = "2.0.2"
 ```
 
 For embedded or `no_std` use:
 
 ```toml
 [dependencies.bbse]
-version = "2.0.0"
+version = "2.0.2"
 default-features = false
 ```
 
