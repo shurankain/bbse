@@ -14,3 +14,7 @@
 ## 2.0.2
 
 - Fixed `README.md` to containg correct version in crates.io.
+
+## 2.1.0
+
+- Fixed issue with not using midpoint for calulation, thanks to Tyilo from Reddit for noticing that.

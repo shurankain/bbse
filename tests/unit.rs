@@ -1,4 +1,4 @@
-use bbse::{decode, encode, encode_from, BBSEStack};
+use bbse::{decode, decode_from, encode, encode_from, BBSEStack};
 
 #[test]
 fn test_basic_encode_decode() {
@@ -58,4 +58,60 @@ fn test_custom_midpoint_wrapper() {
 #[should_panic(expected = "midpoint (0) must be within (start=0, end=10)")]
 fn test_invalid_custom_midpoint() {
     let _ = encode_from(0, 10, 5, 0);
+}
+
+#[test]
+fn test_custom_midpoint_encode_decode() {
+    for target in 0..256 {
+        let path = encode_from(0, 256, target, 64);
+        let decoded = decode_from(0, 256, &path, 64);
+        assert_eq!(
+            decoded, target,
+            "Custom midpoint failed on target={}",
+            target
+        );
+    }
+}
+
+#[test]
+fn test_custom_midpoint_small_range() {
+    for target in 0..8 {
+        let path = encode_from(0, 8, target, 3);
+        let decoded = decode_from(0, 8, &path, 3);
+        assert_eq!(decoded, target, "Failed on value {}", target);
+    }
+}
+
+#[test]
+fn test_custom_midpoint_unbalanced_left() {
+    for target in 0..32 {
+        let path = encode_from(0, 256, target, 8);
+        let decoded = decode_from(0, 256, &path, 8);
+        assert_eq!(decoded, target, "Left-side failure on {}", target);
+    }
+}
+
+#[test]
+fn test_custom_midpoint_unbalanced_right() {
+    for target in 224..256 {
+        let path = encode_from(0, 256, target, 240);
+        let decoded = decode_from(0, 256, &path, 240);
+        assert_eq!(decoded, target, "Right-side failure on {}", target);
+    }
+}
+
+#[test]
+fn test_custom_midpoint_center_precision() {
+    let range = 0..256;
+    let midpoints = [32, 64, 128, 192];
+
+    for &mid in &midpoints {
+        let path = encode_from(range.start, range.end, mid, mid);
+        let decoded = decode_from(range.start, range.end, &path, mid);
+        assert_eq!(decoded, mid, "Failed midpoint identity at {}", mid);
+        assert!(
+            path.is_empty(),
+            "Expected empty path for direct midpoint match"
+        );
+    }
 }

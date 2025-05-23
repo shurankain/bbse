@@ -1,4 +1,4 @@
-# bbse — Backward Binary Search Encoding (v2.0)
+# bbse — Backward Binary Search Encoding
 
 [![Crates.io](https://img.shields.io/crates/v/bbse.svg)](https://crates.io/crates/bbse)
 
@@ -78,14 +78,14 @@ By encoding deltas using binary search paths instead of entropy coding, we achie
 
 ```toml
 [dependencies]
-bbse = "2.0.2"
+bbse = "2.1.0"
 ```
 
 For embedded or `no_std` use:
 
 ```toml
 [dependencies.bbse]
-version = "2.0.2"
+version = "2.1.0"
 default-features = false
 ```
 

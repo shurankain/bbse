@@ -93,6 +93,49 @@ pub fn encode(start: usize, end: usize, target: usize) -> BitVec<u8, Msb0> {
     path
 }
 
+/// BBSE custom midpoint (optional)
+pub fn encode_from(start: usize, end: usize, target: usize, midpoint: usize) -> BitVec<u8, Msb0> {
+    if start >= end {
+        panic!("Invalid range: start ({}) >= end ({})", start, end);
+    }
+    if !(start <= target && target < end) {
+        panic!("target ({}) out of bounds [{}, {})", target, start, end);
+    }
+    if !(start < midpoint && midpoint < end) {
+        panic!(
+            "midpoint ({}) must be within (start={}, end={})",
+            midpoint, start, end
+        );
+    }
+
+    let mut path = BitVec::<u8, Msb0>::new();
+    let mut lo = start;
+    let mut hi = end;
+    let mut mid = midpoint;
+
+    loop {
+        if target == mid {
+            break;
+        }
+
+        if target < mid {
+            path.push(false);
+            hi = mid;
+        } else {
+            path.push(true);
+            lo = mid;
+        }
+
+        if hi - lo == 1 {
+            break;
+        }
+
+        mid = (lo + hi) / 2;
+    }
+
+    path
+}
+
 /// BBSE decoder: consumes a path and returns the corresponding value
 pub fn decode(start: usize, end: usize, path: &BitVec<u8, Msb0>) -> usize {
     let mut lo = start;
@@ -110,15 +153,31 @@ pub fn decode(start: usize, end: usize, path: &BitVec<u8, Msb0>) -> usize {
     (lo + hi) / 2
 }
 
-/// BBSE custom midpoint (optional)
-pub fn encode_from(start: usize, end: usize, target: usize, midpoint: usize) -> BitVec<u8, Msb0> {
-    if !(start < midpoint && midpoint < end) {
-        panic!(
-            "midpoint ({}) must be within (start={}, end={})",
-            midpoint, start, end
-        );
+/// BBSE custom midpoint (optional for default midpoint encoding)
+pub fn decode_from(start: usize, end: usize, path: &BitVec<u8, Msb0>, midpoint: usize) -> usize {
+    if path.is_empty() {
+        return midpoint;
     }
-    encode(start, end, target) // defer to default encode for simplicity
+
+    let mut lo = start;
+    let mut hi = end;
+    let mut mid = midpoint;
+
+    for bit in path.iter() {
+        if *bit {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+
+        if hi - lo == 1 {
+            break;
+        }
+
+        mid = (lo + hi) / 2;
+    }
+
+    (lo + hi) / 2
 }
 
 /// Stack model — store multiple values as separate paths
